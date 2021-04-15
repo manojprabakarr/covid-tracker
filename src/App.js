@@ -1,19 +1,23 @@
 import React,{useEffect,useState} from 'react'
-import {Form, FormControl,MenuItem,Select,Card,CardContent} from '@material-ui/core'
+import { FormControl,MenuItem,Select,Card,CardContent} from '@material-ui/core'
 import './app.css';
 import Inforow from './components/inforow'
 import Map from './components/Map'
 import TableData from './components/Tabledata'
 import "leaflet/dist/leaflet.css";
+import { sortData, statPrettier } from './components/util'
 
 
 
 function App() {
-  const [countryinfo,setcountryinfo]=useState({})
+  const [countryInfo,setcountryInfo]=useState({})
   const [countries,setcountries]=useState([])
   const [country,setcountry]=useState("worldwide")
   const [casesType, setCasesType] = useState("cases");
   const [Tabledata,settabledata]=useState([])
+  const [mapcountries, setmapcountries] = useState([]);
+  const [mapCenter, setMapCenter] = useState({ lat: 34.80746, lng: -40.4796 });
+  const [mapZoom, setMapZoom] = useState(3);
  
 
   useEffect(()=> {
@@ -21,8 +25,8 @@ function App() {
   fetch("https://disease.sh/v3/covid-19/all")
   .then((res)=>res.json())
   .then((data)=> {
-    console.log(data);
-    setcountryinfo(data)
+  
+    setcountryInfo(data)
   })
 
   },[])
@@ -32,14 +36,16 @@ function App() {
       fetch("https://disease.sh/v3/covid-19/countries")
         .then((response) => response.json())
         .then((data) => {
+          console.log(data)
           const countries = data.map((country) => ({
             name: country.country,
             value: country.countryInfo.iso2,
           }));  
+         let Sorteddata=sortData(data)
          
-          settabledata(data);
           setcountries(countries);
-          
+          settabledata(Sorteddata);
+          setmapcountries(Sorteddata)
         });
     };
 
@@ -57,8 +63,11 @@ function App() {
 await fetch(url)
   .then((response) => response.json())
   .then((data) => {
+    
     setcountry(countrycode);
-    setcountryinfo(data);
+    setcountryInfo(data);
+    setMapCenter({ lat: data.countryInfo.lat, lng: data.countryInfo.long });
+        setMapZoom(4);
   
   })
 }
@@ -88,20 +97,21 @@ await fetch(url)
       <div className="app_stats">
       <Inforow
         title="cornovirus"
-          
-           
-            total={countryinfo.cases}
-            cases={countryinfo.cases}
+         active={casesType === "cases"}
+         isRed
+         onClick={(e) => setCasesType("cases")}
+            total={statPrettier(countryInfo.cases)}
+            cases={statPrettier(countryInfo.cases)}
            
         
            
           />
             <Inforow
-            
-          
+              active={casesType === "recovered"}
+            onClick={(e) => setCasesType("recovered")}
           title="Recovered"
-          total={countryinfo.recovered}
-          cases={countryinfo.todayRecovered}
+          total={statPrettier(countryInfo.recovered)}
+          cases={statPrettier(countryInfo.todayRecovered)}
          
       
          
@@ -109,10 +119,11 @@ await fetch(url)
           <Inforow
            
           
-          
+           active={casesType === "deaths"}
+           onClick={(e) => setCasesType("deaths")}
           title="Deaths"
-          total={countryinfo.deaths}
-          cases={countryinfo.todayDeaths}
+          total={statPrettier(countryInfo.deaths)}
+          cases={statPrettier(countryInfo.todayDeaths)}
          
       
          
@@ -121,7 +132,12 @@ await fetch(url)
         
 
       </div>
-      <Map/>
+      <Map
+       countries={mapcountries}
+       casesType={casesType}
+        center={mapCenter}
+        zoom={mapZoom}
+      />
       
     
 
@@ -134,7 +150,7 @@ await fetch(url)
             <h3>Live Cases by Country</h3>
             <TableData  countries={Tabledata}/>
            
-            <h3>Worldwide new  </h3>
+        
            
            
           </div>
